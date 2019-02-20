@@ -4,3 +4,5 @@
 english\.iml
 
 out/production/**/*
+
+\.java-version
