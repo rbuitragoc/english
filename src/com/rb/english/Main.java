@@ -11,10 +11,11 @@ public class Main {
     private static final String PROMPT = "Please enter a number and I'll write it as en English Numeral for you:";
     private static final String CONFIRMATION = "%s (Read as %d): \"%s\"";
     private static final String WRONG = "%s Can't write English Numeral for this number: (%s)";
-    private static final String LARGE = "numbers greater or equal than one quintillion are currently not supported: %s";
+    private static final String LARGE = "numbers greater or equal than one %s are currently not supported: %s";
     private static final String RETRY = "Do you want to test another? y/n";
 
-    private static final int MAXIMUM_SUPPORTED_POWER_OF_TEN = 15;
+    private static final Integer MAXIMUM_SUPPORTED_POWER_OF_TEN = 15;
+    private static final Integer FIRST_UNSUPPORTED_POWER_OF_TEN = 18;
     private static final String TWO = "2";
 
     private Properties mappingProperties;
@@ -103,14 +104,14 @@ public class Main {
     }
 
     private String decomposePowersOfTen(Long number) {
-        Long powerOfTen = 100L;
+        Long powerOfTen = null;
         Object powKey = null;
         Integer[] supportedPowers = {2, 3, 6, 9, 12, 15};
         for (int i = 0; i < supportedPowers.length; i = i + 1) {
             Integer pow = supportedPowers[i];
             double currentPowerOfTen = Math.pow(10, pow);
             double nextSupportedPowerOfTen =
-                    Math.pow(10, pow == MAXIMUM_SUPPORTED_POWER_OF_TEN ? MAXIMUM_SUPPORTED_POWER_OF_TEN : supportedPowers[i + 1]);
+                    Math.pow(10, pow == MAXIMUM_SUPPORTED_POWER_OF_TEN ? FIRST_UNSUPPORTED_POWER_OF_TEN : supportedPowers[i + 1]);
             if (number >= currentPowerOfTen && number < nextSupportedPowerOfTen) {
                 powKey = pow.toString();
                 powerOfTen = (long) currentPowerOfTen;
@@ -118,7 +119,7 @@ public class Main {
             }
         }
         if (powerOfTen == null) {
-            throw new IllegalArgumentException(String.format(LARGE, number.toString()));
+            throw new IllegalArgumentException(String.format(LARGE, powersOfTenMappingProperties.get(FIRST_UNSUPPORTED_POWER_OF_TEN.toString()), number.toString()));
         }
         Long remainder = number % powerOfTen;
         Long powerOfTenUnits = (number - remainder) / powerOfTen;
