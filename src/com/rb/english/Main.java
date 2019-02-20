@@ -12,14 +12,19 @@ public class Main {
     private static final String CONFIRMATION = "%s (Read as %d): \"%s\"";
     private static final String WRONG = "%s Can't write English Numeral for this number: (%s)";
     private static final String LARGE = "numbers greater or equal than one %s are currently not supported: %s";
-    private static final String RETRY = "Do you want to test another? y/n";
+    private static final String RETRY = "Do you want to try another number? y/n";
 
+    // Limits of operational capacity
     private static final Integer MAXIMUM_SUPPORTED_POWER_OF_TEN = 15;
     private static final Integer FIRST_UNSUPPORTED_POWER_OF_TEN = 18;
-    private static final String TWO = "2";
+    // Lowest powers
+    private static final Integer TENS = 1;
+    private static final String TENS_KEY = TENS.toString();
+    private static final Integer HUNDREDS = 2;
+    private static final String HUNDREDS_KEY = HUNDREDS.toString();
 
     private Properties mappingProperties;
-    private Properties powersOfTenMappingProperties;
+    private Properties powersOfTenProperties;
 
     public static void main(String[] args) throws Exception {
         Main runner = new Main();
@@ -51,6 +56,10 @@ public class Main {
         return reader.readLine().matches("[y|Y]");
     }
 
+    private String capitalize(String phrase) {
+        return phrase.strip().isEmpty() ? phrase : phrase.substring(0, 1).toUpperCase() + phrase.substring(1);
+    }
+
     private void loadProperties() {
         mappingProperties = new Properties();
         String[] propertyFiles = {
@@ -66,9 +75,9 @@ public class Main {
                 System.err.println(String.format(HALT, p, e.getLocalizedMessage()));
             }
         });
-        powersOfTenMappingProperties = new Properties();
+        powersOfTenProperties = new Properties();
         try {
-            powersOfTenMappingProperties.load(findFileAsResource(propertyFiles[3]));
+            powersOfTenProperties.load(findFileAsResource(propertyFiles[3]));
         } catch (IOException e) {
             System.err.println(String.format(HALT, propertyFiles[3], e.getLocalizedMessage()));
         }
@@ -85,54 +94,43 @@ public class Main {
                 String.format("%s", mappingProperties.get(inputString)) : decompose(inputString);
     }
 
-    private String capitalize(String phrase) {
-        return phrase.strip().isEmpty() ? phrase : phrase.substring(0, 1).toUpperCase() + phrase.substring(1);
-    }
-
     private String decompose(String inputString) {
         long number = Long.parseLong(inputString);
-        if (number < 100) {
-            Long remainder = number % 10;
-            Long tens = number - remainder;
-            if (remainder > 0) {
-                return String.format("%s %s", asEnglishNumeral(tens.toString()), asEnglishNumeral(remainder.toString()));
-            }
-        } else {
-            return decomposePowersOfTen(number);
-        }
-        return "TBD";
-    }
 
-    private String decomposePowersOfTen(Long number) {
         Long powerOfTen = null;
-        Object powKey = null;
-        Integer[] supportedPowers = {2, 3, 6, 9, 12, 15};
-        for (int i = 0; i < supportedPowers.length; i = i + 1) {
-            Integer pow = supportedPowers[i];
+        String powKey = null;
+        for (Integer pow = TENS; pow < FIRST_UNSUPPORTED_POWER_OF_TEN; pow = nextPow(pow)) {
             double currentPowerOfTen = Math.pow(10, pow);
-            double nextSupportedPowerOfTen =
-                    Math.pow(10, pow == MAXIMUM_SUPPORTED_POWER_OF_TEN ? FIRST_UNSUPPORTED_POWER_OF_TEN : supportedPowers[i + 1]);
-            if (number >= currentPowerOfTen && number < nextSupportedPowerOfTen) {
+            double nextPowerOfTen = Math.pow(10, nextPowerOfTen(pow));
+            if (number >= currentPowerOfTen && number < nextPowerOfTen) {
                 powKey = pow.toString();
                 powerOfTen = (long) currentPowerOfTen;
                 break;
             }
         }
         if (powerOfTen == null) {
-            throw new IllegalArgumentException(String.format(LARGE, powersOfTenMappingProperties.get(FIRST_UNSUPPORTED_POWER_OF_TEN.toString()), number.toString()));
+            Object firstUnsupportedDenominator = powersOfTenProperties.get(FIRST_UNSUPPORTED_POWER_OF_TEN.toString());
+            throw new IllegalArgumentException(String.format(LARGE, firstUnsupportedDenominator, number));
         }
         Long remainder = number % powerOfTen;
-        Long powerOfTenUnits = (number - remainder) / powerOfTen;
+        Long powerOfTenUnits = TENS_KEY.equals(powKey) ? number - remainder : (number - remainder) / powerOfTen;
         String englishPowerNumeral = asEnglishNumeral(powerOfTenUnits.toString());
-        Object powerScaleDenomination = powersOfTenMappingProperties.get(powKey);
+        Object powerScaleDenomination = TENS_KEY.equals(powKey) ? "" : " " + powersOfTenProperties.get(powKey);
         if (remainder > 0) {
+            String conditionalAnd = HUNDREDS_KEY.equals(powKey) ? " and" : "";
             String remainderNumeral = asEnglishNumeral(remainder.toString());
-            String conditionalAnd = TWO.equals(powKey.toString()) ? " and" : "";
-            return String.format("%s %s%s %s", englishPowerNumeral, powerScaleDenomination, conditionalAnd, remainderNumeral);
+            return String.format("%s%s%s %s", englishPowerNumeral, powerScaleDenomination, conditionalAnd, remainderNumeral);
         } else {
-            return String.format("%s %s", englishPowerNumeral, powerScaleDenomination);
+            return String.format("%s%s", englishPowerNumeral, powerScaleDenomination);
         }
-
-
     }
+
+    private int nextPow(Integer pow) {
+        return TENS.equals(pow) || HUNDREDS.equals(pow) ? pow + 1 : pow + 3;
+    }
+
+    private double nextPowerOfTen(Integer pow) {
+        return MAXIMUM_SUPPORTED_POWER_OF_TEN.equals(pow) ? FIRST_UNSUPPORTED_POWER_OF_TEN : nextPow(pow);
+    }
+
 }
