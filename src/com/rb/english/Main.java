@@ -1,6 +1,8 @@
 package com.rb.english;
 
 import java.io.*;
+import java.net.URL;
+import java.nio.file.FileSystemNotFoundException;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.stream.Stream;
@@ -68,11 +70,13 @@ public class Main {
             "tens.properties",
             "powersoften.properties"
         };
+
         Stream.of(propertyFiles).filter(n -> !n.contains("pow")).forEach(p -> {
             try {
                 mappingProperties.load(findFileAsResource(p));
             } catch (IOException e) {
                 System.err.println(String.format(HALT, p, e.getLocalizedMessage()));
+                System.exit(-1);
             }
         });
         powersOfTenProperties = new Properties();
@@ -80,13 +84,19 @@ public class Main {
             powersOfTenProperties.load(findFileAsResource(propertyFiles[3]));
         } catch (IOException e) {
             System.err.println(String.format(HALT, propertyFiles[3], e.getLocalizedMessage()));
+            System.exit(-1);
         }
     }
 
     private FileReader findFileAsResource(String path) throws FileNotFoundException {
-        return new FileReader(
-                new File(Optional.ofNullable(getClass().getResource(path))
-                        .orElseThrow(() -> new FileNotFoundException(path)).getPath()));
+        URL resourceUrl = getClass().getResource(path);
+        if (resourceUrl == null) {
+            resourceUrl = ClassLoader.getSystemResource(path);
+            if (resourceUrl == null) {
+                throw new FileNotFoundException(path);
+            }
+        }
+        return new FileReader(new File(resourceUrl.getPath()));
     }
 
     private String asEnglishNumeral(String inputString) {
